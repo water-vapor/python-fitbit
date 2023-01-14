@@ -123,6 +123,9 @@ class FitbitOauth2Client(object):
             "sleep",
             "social",
             "weight",
+            "oxygen_saturation",
+            "respiratory_rate",
+            "temperature",
         ]
 
         if redirect_uri:
