@@ -550,7 +550,8 @@ class Fitbit(object):
         )
         return self.make_request(url)
 
-    def intraday_time_series(self, resource, base_date='today', detail_level='1min', start_time=None, end_time=None):
+    def intraday_time_series(self, resource, base_date='today', detail_level=None, start_time=None, end_time=None,
+                             start_date=None, end_date=None):
         """
         The intraday time series extends the functionality of the regular time series, but returning data at a
         more granular level for a single day, defaulting to 1 minute intervals. To access this feature, one must
@@ -566,31 +567,58 @@ class Fitbit(object):
         if not all(time_map) and any(time_map):
             raise TypeError('You must provide both the end and start time or neither')
 
-        """
-        Per
-        https://dev.fitbit.com/docs/activity/#get-activity-intraday-time-series
-        the detail-level is now (OAuth 2.0 ):
-        either "1min" or "15min" (optional). "1sec" for heart rate.
-        """
-        if not detail_level in ['1sec', '1min', '15min']:
-            raise ValueError("Period must be either '1sec', '1min', or '15min'")
+        if resource in ['br', 'spo2', 'hrv']:
+            if detail_level:
+                raise TypeError(f"Detail level is not available for resource {resource}")
+            if start_time or end_time:
+                raise TypeError(f"Start and end time are not available for resource {resource}")
 
-        url = "{0}/{1}/user/-/{resource}/date/{base_date}/1d/{detail_level}".format(
-            *self._get_common_args(),
-            resource=resource,
-            base_date=self._get_date_string(base_date),
-            detail_level=detail_level
-        )
+            if start_date and end_date:
+                url = "{0}/{1}/user/-/{resource}/date/{start_date}/{end_date}/all.json".format(
+                    *self._get_common_args(),
+                    resource=resource,
+                    start_date=self._get_date_string(start_date),
+                    end_date=self._get_date_string(end_date)
+                )
 
-        if all(time_map):
-            url = url + '/time'
-            for time in [start_time, end_time]:
-                time_str = time
-                if not isinstance(time_str, str):
-                    time_str = time.strftime('%H:%M')
-                url = url + ('/%s' % (time_str))
+            else:
+                url = "{0}/{1}/user/-/{resource}/date/{base_date}/all.json".format(
+                    *self._get_common_args(),
+                    resource=resource,
+                    base_date=self._get_date_string(base_date)
+                )
 
-        url = url + '.json'
+
+        else:
+            """
+            Per
+            https://dev.fitbit.com/docs/activity/#get-activity-intraday-time-series
+            the detail-level is now (OAuth 2.0 ):
+            either "1min" or "15min" (optional). "1sec" for heart rate.
+            """
+            if not detail_level:
+                detail_level = '1min'
+            if detail_level not in ['1sec', '1min', '15min']:
+                raise ValueError("Period must be either '1sec', '1min', or '15min'")
+            if start_date or end_date:
+                raise TypeError(f"Start and end date are not available for resource {resource}")
+
+            url = "{0}/{1}/user/-/{resource}/date/{base_date}/1d/{detail_level}".format(
+                *self._get_common_args(),
+                resource=resource,
+                base_date=self._get_date_string(base_date),
+                detail_level=detail_level
+            )
+
+            if all(time_map):
+                url = url + '/time'
+                for time in [start_time, end_time]:
+                    time_str = time
+                    if not isinstance(time_str, str):
+                        time_str = time.strftime('%H:%M')
+                    url = url + ('/%s' % (time_str))
+
+            url = url + '.json'
 
         return self.make_request(url)
 
